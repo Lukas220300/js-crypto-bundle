@@ -20,5 +20,10 @@
   "bugs": {
     "url": "https://github.com/Lukas220300/js-crypto-bundle/issues"
   },
-  "homepage": "https://github.com/Lukas220300/js-crypto-bundle#readme"
+  "homepage": "https://github.com/Lukas220300/js-crypto-bundle#readme",
+  "dependencies": {
+    "js-crypto-converter": "^1.0.0",
+    "js-crypto-core": "^1.1.0",
+    "js-crypto-local-storer": "^1.0.0"
+  }
 }
