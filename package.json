@@ -1,0 +1,24 @@
+{
+  "name": "js-crypto-bundle",
+  "version": "1.0.0",
+  "description": "A bundle for crypto in js",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lukas220300/js-crypto-bundle.git"
+  },
+  "keywords": [
+    "crypto",
+    "bundle",
+    "typescript"
+  ],
+  "author": "Lukas Schönbeck",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Lukas220300/js-crypto-bundle/issues"
+  },
+  "homepage": "https://github.com/Lukas220300/js-crypto-bundle#readme"
+}
