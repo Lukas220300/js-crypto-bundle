@@ -204,5 +204,31 @@ export default class Cryptols implements Cryptolsable {
         return {privateKey, publicKey}
     }
 
+    generateNewAesKey(): Promise<CryptoKey> {
+        return this.aes.generateNewKey()
+    }
+
+    // @ts-ignore
+    async generateAndSaveNewAesKey(identifier: string, key: CryptoKey): Promise<CryptoKey> {
+        const aesKey = await this.generateNewAesKey()
+        const exportedKey = await this.aes.exportKey('jwk', aesKey)
+        const encodedKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
+        const ivMaterial = this.aes.generateNewInitializeVector()
+        const encryptedKey = await this.aes.encrypt(ivMaterial, key, encodedKey)
+        const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
+        await this.storage.saveAESKey(KeyTypes.AES_KEY, identifier, base64Key, ivMaterial)
+        return aesKey
+    }
+
+    // @ts-ignore
+    async getSavedAesKey(identifier: string, key: CryptoKey): Promise<CryptoKey> {
+        const dbEntry = await this.storage.getKey(KeyTypes.AES_KEY, identifier)
+        const base64Key = (dbEntry as KeyWithMaterial).key
+        const iv = (dbEntry as KeyWithMaterial).material
+        const encryptedKey = ByteConverter.base64StringToUint8Array(base64Key as string)
+        const decryptedKey = await this.aes.decrypt(iv, key, encryptedKey)
+        const jwk = KeyConverter.ByteToJWK(new Uint8Array(decryptedKey))
+        return this.aes.importKey(jwk)
+    }
 
 }

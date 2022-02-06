@@ -1,4 +1,9 @@
 export interface Cryptolsable {
+    /*
+    TODO: encryption
+    TODO: decryption
+    TODO: save Key
+     */
     // init and general functions
     init(storageTerminatedCallBack: Function):Promise<void>
     newSalt():Uint8Array
@@ -22,5 +27,9 @@ export interface Cryptolsable {
     getSavedRsaPublicKey(identifier: string): Promise<CryptoKey>
     getSavedRsaPrivateKey(identifier: string, key: CryptoKey): Promise<CryptoKey>
     getSavedRsaKeyPair(identifier: string, key: CryptoKey): Promise<{privateKey: CryptoKey, publicKey: CryptoKey}>
+    // AES
+    generateNewAesKey(): Promise<CryptoKey>
+    generateAndSaveNewAesKey(identifier: string, key: CryptoKey): Promise<CryptoKey>
+    getSavedAesKey(identifier: string, key: CryptoKey): Promise<CryptoKey>
 
 }
