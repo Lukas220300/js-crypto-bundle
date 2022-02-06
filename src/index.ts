@@ -18,6 +18,9 @@ export default class Cryptols implements Cryptolsable {
     protected rsa: RSA
     protected storage: KeyStorage | undefined
 
+    static IDENTIFIER_SPLITTER = '{(##)}'
+    static SHARED_SECRET_IDENTIFIER_PREFIX = '8c13c5a9-1b80-4449-9383-22fddce8b7c3'
+
     constructor(storageTerminatedCallBack: Function) {
         this.aes = new AES()
         this.ecdh = new ECDH()
@@ -51,6 +54,16 @@ export default class Cryptols implements Cryptolsable {
         const exportedKey = await this.pbkdf2.exportKey('jwk', pbkdfKey)
         await this.storage.savePBKDFKey(KeyTypes.PBKDF2_KEY, userIdentifier, exportedKey as JsonWebKey, salt)
         return pbkdfKey
+    }
+
+    // @ts-ignore
+    async isPasswordKeySaved(aliceIdentifier: string):Promise<boolean> {
+        const dbEntry = await this.storage.getKey(KeyTypes.PBKDF2_KEY, aliceIdentifier)
+        if (dbEntry === undefined) {
+            return false
+        } else {
+            return true
+        }
     }
 
     // @ts-ignore
@@ -99,6 +112,53 @@ export default class Cryptols implements Cryptolsable {
     async getSavedECDHPublicKey(userIdentifier: string): Promise<CryptoKey> {
         const dbEntry = await this.storage.getKey(KeyTypes.ECDH_PUBLIC_KEY, userIdentifier)
         return this.ecdh.importKeyFordDrive(dbEntry as JsonWebKey, false)
+    }
+
+    generateSharedSecret(privateKey: CryptoKey, publicKey: CryptoKey): Promise<CryptoKey> {
+        return this.ecdh.generateSharedSecret(privateKey, publicKey)
+    }
+
+    // @ts-ignore
+    async generateSharedSecretFromSavedKey(identifierAlice: string, identifierBob: string): Promise<CryptoKey> {
+        const passwordKey = await this.getSavedPasswordKey(identifierAlice)
+        const alicePrivateKey = await this.getSavedECDHPrivateKey(identifierAlice, passwordKey)
+        const bobPublicKey = await this.getSavedECDHPublicKey(identifierBob)
+        return this.generateSharedSecret(
+            alicePrivateKey,
+            bobPublicKey
+        )
+    }
+
+    private static getECDHSharedSecretIdentifier(identifierAlice: string, identifierBob: string): string {
+        return Cryptols.SHARED_SECRET_IDENTIFIER_PREFIX
+            + Cryptols.IDENTIFIER_SPLITTER
+            + identifierAlice
+            + Cryptols.IDENTIFIER_SPLITTER
+            + identifierBob;
+    }
+
+    // @ts-ignore
+    async saveSharedSecret(key: CryptoKey, aliceIdentifier: string, bobIdentifier: string): Promise<void> {
+        const passwordKey = await this.getSavedPasswordKey(aliceIdentifier)
+        const exportedKey = await this.ecdh.exportKey('jwk', key)
+        const serializedKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
+        const iv = this.aes.generateNewInitializeVector()
+        const encryptedKey = await this.aes.encrypt(iv, passwordKey, serializedKey)
+        const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
+        await this.storage.saveAESKey(KeyTypes.AES_KEY, Cryptols.getECDHSharedSecretIdentifier(aliceIdentifier,bobIdentifier),base64Key, iv)
+        return;
+    }
+
+    // @ts-ignore
+    async getSavedShareSecret(aliceIdentifier: string, bobIdentifier: string): Promise<CryptoKey> {
+        const passwordKey = await this.getSavedPasswordKey(aliceIdentifier)
+        const dbEntry = await this.storage.getKey(KeyTypes.AES_KEY, Cryptols.getECDHSharedSecretIdentifier(aliceIdentifier, bobIdentifier))
+        const iv = (dbEntry as KeyWithMaterial).material
+        const base64Key = (dbEntry as KeyWithMaterial).key
+        const encryptedKey = ByteConverter.base64StringToUint8Array(base64Key as string)
+        const decryptedKey = await this.aes.decrypt(iv, passwordKey, encryptedKey)
+        const formattedKey = KeyConverter.ByteToJWK(new Uint8Array(decryptedKey))
+        return await this.ecdh.importSharedSecret(formattedKey)
     }
 
 }
