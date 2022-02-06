@@ -161,6 +161,50 @@ export default class Cryptols implements Cryptolsable {
         return await this.ecdh.importSharedSecret(formattedKey)
     }
 
+    // @ts-ignore
+    async saveECDHPublicKey(identifier: string, key:CryptoKey): Promise<boolean> {
+        try{
+            const exportedKey = await this.ecdh.exportKey('jwk', key)
+            await this.storage.saveAsymmetricKey(KeyTypes.ECDH_PUBLIC_KEY, identifier, exportedKey as JsonWebKey)
+            return true
+        } catch (error) {
+            console.error(error)
+            return false
+        }
+    }
+
+    // @ts-ignore
+    async saveECDHPrivateKey(identifier: string, key: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
+        try{
+            const exportedKey = await this.ecdh.exportKey('jwk', key)
+            const iv = this.aes.generateNewInitializeVector()
+            const byteKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
+            const encryptedKey = await this.aes.encrypt(iv,encryptionKey, byteKey)
+            const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
+            await this.storage.saveAsymmetricKey(KeyTypes.ECDH_PRIVATE_KEY, identifier, {material: iv,key:base64Key})
+            return true
+        }catch (e) {
+            console.error(e)
+            return false
+        }
+    }
+
+    // @ts-ignore
+    async saveECDHKeyPair(identifier: string, publicKey: CryptoKey, privateKey: CryptoKey, encryptionKey: CryptoKey): Promise<boolean>{
+        try{
+            if(!await this.saveECDHPublicKey(identifier, publicKey)) {
+                return false
+            }
+            if(!await this.saveECDHPrivateKey(identifier, privateKey, encryptionKey)) {
+                return false
+            }
+            return true
+        }catch (e) {
+            console.error(e)
+            return false
+        }
+    }
+
     generateNewRsaKeyPair(): Promise<CryptoKeyPair> {
         return this.rsa.generateNewKePair()
     }
@@ -204,6 +248,47 @@ export default class Cryptols implements Cryptolsable {
         return {privateKey, publicKey}
     }
 
+    // @ts-ignore
+    async saveRsaPublicKey(identifier: string, publicKey: CryptoKey): Promise<boolean> {
+        try{
+            const exportedKey = await this.rsa.exportKey('jwk', publicKey)
+            await this.storage.saveAsymmetricKey(KeyTypes.RSA_PUBLIC_KEY, identifier, exportedKey as JsonWebKey)
+            return true
+        }catch (e) {
+            console.error(e)
+            return false
+        }
+    }
+
+    // @ts-ignore
+    async saveRsaPrivateKey(identifier: string, privateKey: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
+        try{
+            const exportedKey = await this.rsa.exportKey('jwk', privateKey)
+            const byteKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
+            const iv = this.aes.generateNewInitializeVector()
+            const encryptedKey = await this.aes.encrypt(iv, encryptionKey, byteKey)
+            const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
+            await this.storage.saveAsymmetricKey(KeyTypes.RSA_PRIVATE_KEY, identifier, {material:iv, key:base64Key})
+            return true
+        }catch (e) {
+            console.error(e)
+            return false
+        }
+    }
+
+    // @ts-ignore
+    async saveRsaKeyPair(identifier: string, publicKey: CryptoKey, privateKey: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
+        try{
+            if(!await this.saveRsaPublicKey(identifier, publicKey) || !await this.saveRsaPrivateKey(identifier, privateKey, encryptionKey)) {
+                return false
+            }
+            return true
+        }catch (e) {
+            console.error(e)
+            return false
+        }
+    }
+
     generateNewAesKey(): Promise<CryptoKey> {
         return this.aes.generateNewKey()
     }
@@ -231,4 +316,19 @@ export default class Cryptols implements Cryptolsable {
         return this.aes.importKey(jwk)
     }
 
+    // @ts-ignore
+    async saveAesKey(identifier: string, key: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
+        try{
+            const exportedKey = await this.aes.exportKey('jwk', key)
+            const byteKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
+            const iv = this.aes.generateNewInitializeVector()
+            const encryptedKey = await this.aes.encrypt(iv, encryptionKey, byteKey)
+            const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
+            await this.storage.saveAESKey(KeyTypes.AES_KEY, identifier, base64Key, iv)
+            return true
+        }catch (e) {
+            console.error(e)
+            return false
+        }
+    }
 }
