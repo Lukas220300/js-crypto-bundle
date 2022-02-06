@@ -161,4 +161,48 @@ export default class Cryptols implements Cryptolsable {
         return await this.ecdh.importSharedSecret(formattedKey)
     }
 
+    generateNewRsaKeyPair(): Promise<CryptoKeyPair> {
+        return this.rsa.generateNewKePair()
+    }
+
+    // @ts-ignore
+    async generateAndSaveNewRsaKeyPair(identifier: string, key: CryptoKey): Promise<CryptoKeyPair> {
+        const keyPair = await this.generateNewRsaKeyPair()
+        const exportedPrivateKey = await this.rsa.exportKey('jwk', keyPair.privateKey) // 1. export key
+        const exportedPublicKey = await this.rsa.exportKey('jwk', keyPair.publicKey)
+        // public Key
+        await this.storage.saveAsymmetricKey(KeyTypes.RSA_PUBLIC_KEY, identifier, exportedPublicKey as JsonWebKey)
+        // private Key
+        const formattedKey = KeyConverter.JWKToByte(exportedPrivateKey as JsonWebKey) // 2. JsonWebKey to String and then to byte
+        const ivMaterial = this.aes.generateNewInitializeVector() // 3. build new iv
+        const encryptedKey = await this.aes.encrypt(ivMaterial, key, formattedKey) // 4. encrypt key with aes and key
+        const encryptedKeyAsBase64 = ByteConverter.ArrayBufferToBase64String(encryptedKey) // 5. convert ArrayBuffer to base 64 string
+        await this.storage.saveAsymmetricKey(KeyTypes.RSA_PRIVATE_KEY, identifier, {material: ivMaterial, key:encryptedKeyAsBase64}) // 6. save key in indexedDB
+        return keyPair
+    }
+
+    // @ts-ignore
+    async getSavedRsaPublicKey(identifier: string): Promise<CryptoKey> {
+        const dbEntry = await this.storage.getKey(KeyTypes.RSA_PUBLIC_KEY, identifier)
+        return this.rsa.importKey(dbEntry as JsonWebKey, false)
+    }
+
+    // @ts-ignore
+    async getSavedRsaPrivateKey(identifier: string, key: CryptoKey): Promise<CryptoKey> {
+        const dbEntry = await this.storage.getKey(KeyTypes.RSA_PRIVATE_KEY, identifier)
+        const iv = (dbEntry as KeyWithMaterial).material
+        const encryptedBase64Key = (dbEntry as KeyWithMaterial).key
+        const encryptedKey = ByteConverter.base64StringToUint8Array(encryptedBase64Key as string)
+        const decryptedKey = await this.aes.decrypt(iv,key,encryptedKey)
+        return this.rsa.importKey(KeyConverter.ByteToJWK(new Uint8Array(decryptedKey)), true)
+    }
+
+    // @ts-ignore
+    async getSavedRsaKeyPair(identifier: string, key: CryptoKey): Promise<{privateKey: CryptoKey, publicKey: CryptoKey}> {
+        const publicKey = await this.getSavedRsaPublicKey(identifier)
+        const privateKey = await this.getSavedRsaPrivateKey(identifier, key)
+        return {privateKey, publicKey}
+    }
+
+
 }
