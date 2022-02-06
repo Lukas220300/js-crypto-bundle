@@ -27,6 +27,12 @@ export default class Cryptols implements Cryptolsable {
         this.pbkdf2 = new PBKDF2()
         this.rsa = new RSA()
         this.storage = undefined
+
+        /*
+        todo: talk about init function
+        todo: change name to cryptols
+         */
+
         /*
         new IndexedDBBuilder().buildStorage('js-crypto-key-storage', 1, storageTerminatedCallBack).then((keyStorage: KeyStorage) => {
             this.storage = keyStorage

@@ -2,7 +2,6 @@ export interface Cryptolsable {
     /*
     TODO: encryption
     TODO: decryption
-    TODO: save Key
      */
     // init and general functions
     init(storageTerminatedCallBack: Function):Promise<void>
