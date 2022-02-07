@@ -63,7 +63,7 @@ export default class Cryptols implements Cryptolsable {
     }
 
     // @ts-ignore
-    async isPasswordKeySaved(aliceIdentifier: string):Promise<boolean> {
+    async isPasswordKeySaved(aliceIdentifier: string): Promise<boolean> {
         const dbEntry = await this.storage.getKey(KeyTypes.PBKDF2_KEY, aliceIdentifier)
         if (dbEntry === undefined) {
             return false
@@ -105,7 +105,7 @@ export default class Cryptols implements Cryptolsable {
     }
 
     // @ts-ignore
-    async getSavedECDHPrivateKey(userIdentifier: string, key:CryptoKey): Promise<CryptoKey> {
+    async getSavedECDHPrivateKey(userIdentifier: string, key: CryptoKey): Promise<CryptoKey> {
         const dbEntry = await this.storage.getKey(KeyTypes.ECDH_PRIVATE_KEY, userIdentifier)
         const iv = (dbEntry as KeyWithMaterial).material
         const encodedKey = ByteConverter.base64StringToUint8Array((dbEntry as KeyWithMaterial).key as string)
@@ -151,7 +151,7 @@ export default class Cryptols implements Cryptolsable {
         const iv = this.aes.generateNewInitializeVector()
         const encryptedKey = await this.aes.encrypt(iv, passwordKey, serializedKey)
         const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
-        await this.storage.saveAESKey(KeyTypes.AES_KEY, Cryptols.getECDHSharedSecretIdentifier(aliceIdentifier,bobIdentifier),base64Key, iv)
+        await this.storage.saveAESKey(KeyTypes.AES_KEY, Cryptols.getECDHSharedSecretIdentifier(aliceIdentifier, bobIdentifier), base64Key, iv)
         return;
     }
 
@@ -168,8 +168,8 @@ export default class Cryptols implements Cryptolsable {
     }
 
     // @ts-ignore
-    async saveECDHPublicKey(identifier: string, key:CryptoKey): Promise<boolean> {
-        try{
+    async saveECDHPublicKey(identifier: string, key: CryptoKey): Promise<boolean> {
+        try {
             const exportedKey = await this.ecdh.exportKey('jwk', key)
             await this.storage.saveAsymmetricKey(KeyTypes.ECDH_PUBLIC_KEY, identifier, exportedKey as JsonWebKey)
             return true
@@ -181,31 +181,31 @@ export default class Cryptols implements Cryptolsable {
 
     // @ts-ignore
     async saveECDHPrivateKey(identifier: string, key: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
-        try{
+        try {
             const exportedKey = await this.ecdh.exportKey('jwk', key)
             const iv = this.aes.generateNewInitializeVector()
             const byteKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
-            const encryptedKey = await this.aes.encrypt(iv,encryptionKey, byteKey)
+            const encryptedKey = await this.aes.encrypt(iv, encryptionKey, byteKey)
             const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
-            await this.storage.saveAsymmetricKey(KeyTypes.ECDH_PRIVATE_KEY, identifier, {material: iv,key:base64Key})
+            await this.storage.saveAsymmetricKey(KeyTypes.ECDH_PRIVATE_KEY, identifier, {material: iv, key: base64Key})
             return true
-        }catch (e) {
+        } catch (e) {
             console.error(e)
             return false
         }
     }
 
     // @ts-ignore
-    async saveECDHKeyPair(identifier: string, publicKey: CryptoKey, privateKey: CryptoKey, encryptionKey: CryptoKey): Promise<boolean>{
-        try{
-            if(!await this.saveECDHPublicKey(identifier, publicKey)) {
+    async saveECDHKeyPair(identifier: string, publicKey: CryptoKey, privateKey: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
+        try {
+            if (!await this.saveECDHPublicKey(identifier, publicKey)) {
                 return false
             }
-            if(!await this.saveECDHPrivateKey(identifier, privateKey, encryptionKey)) {
+            if (!await this.saveECDHPrivateKey(identifier, privateKey, encryptionKey)) {
                 return false
             }
             return true
-        }catch (e) {
+        } catch (e) {
             console.error(e)
             return false
         }
@@ -227,7 +227,10 @@ export default class Cryptols implements Cryptolsable {
         const ivMaterial = this.aes.generateNewInitializeVector() // 3. build new iv
         const encryptedKey = await this.aes.encrypt(ivMaterial, key, formattedKey) // 4. encrypt key with aes and key
         const encryptedKeyAsBase64 = ByteConverter.ArrayBufferToBase64String(encryptedKey) // 5. convert ArrayBuffer to base 64 string
-        await this.storage.saveAsymmetricKey(KeyTypes.RSA_PRIVATE_KEY, identifier, {material: ivMaterial, key:encryptedKeyAsBase64}) // 6. save key in indexedDB
+        await this.storage.saveAsymmetricKey(KeyTypes.RSA_PRIVATE_KEY, identifier, {
+            material: ivMaterial,
+            key: encryptedKeyAsBase64
+        }) // 6. save key in indexedDB
         return keyPair
     }
 
@@ -243,12 +246,12 @@ export default class Cryptols implements Cryptolsable {
         const iv = (dbEntry as KeyWithMaterial).material
         const encryptedBase64Key = (dbEntry as KeyWithMaterial).key
         const encryptedKey = ByteConverter.base64StringToUint8Array(encryptedBase64Key as string)
-        const decryptedKey = await this.aes.decrypt(iv,key,encryptedKey)
+        const decryptedKey = await this.aes.decrypt(iv, key, encryptedKey)
         return this.rsa.importKey(KeyConverter.ByteToJWK(new Uint8Array(decryptedKey)), true)
     }
 
     // @ts-ignore
-    async getSavedRsaKeyPair(identifier: string, key: CryptoKey): Promise<{privateKey: CryptoKey, publicKey: CryptoKey}> {
+    async getSavedRsaKeyPair(identifier: string, key: CryptoKey): Promise<{ privateKey: CryptoKey, publicKey: CryptoKey }> {
         const publicKey = await this.getSavedRsaPublicKey(identifier)
         const privateKey = await this.getSavedRsaPrivateKey(identifier, key)
         return {privateKey, publicKey}
@@ -256,11 +259,11 @@ export default class Cryptols implements Cryptolsable {
 
     // @ts-ignore
     async saveRsaPublicKey(identifier: string, publicKey: CryptoKey): Promise<boolean> {
-        try{
+        try {
             const exportedKey = await this.rsa.exportKey('jwk', publicKey)
             await this.storage.saveAsymmetricKey(KeyTypes.RSA_PUBLIC_KEY, identifier, exportedKey as JsonWebKey)
             return true
-        }catch (e) {
+        } catch (e) {
             console.error(e)
             return false
         }
@@ -268,15 +271,15 @@ export default class Cryptols implements Cryptolsable {
 
     // @ts-ignore
     async saveRsaPrivateKey(identifier: string, privateKey: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
-        try{
+        try {
             const exportedKey = await this.rsa.exportKey('jwk', privateKey)
             const byteKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
             const iv = this.aes.generateNewInitializeVector()
             const encryptedKey = await this.aes.encrypt(iv, encryptionKey, byteKey)
             const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
-            await this.storage.saveAsymmetricKey(KeyTypes.RSA_PRIVATE_KEY, identifier, {material:iv, key:base64Key})
+            await this.storage.saveAsymmetricKey(KeyTypes.RSA_PRIVATE_KEY, identifier, {material: iv, key: base64Key})
             return true
-        }catch (e) {
+        } catch (e) {
             console.error(e)
             return false
         }
@@ -284,12 +287,12 @@ export default class Cryptols implements Cryptolsable {
 
     // @ts-ignore
     async saveRsaKeyPair(identifier: string, publicKey: CryptoKey, privateKey: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
-        try{
-            if(!await this.saveRsaPublicKey(identifier, publicKey) || !await this.saveRsaPrivateKey(identifier, privateKey, encryptionKey)) {
+        try {
+            if (!await this.saveRsaPublicKey(identifier, publicKey) || !await this.saveRsaPrivateKey(identifier, privateKey, encryptionKey)) {
                 return false
             }
             return true
-        }catch (e) {
+        } catch (e) {
             console.error(e)
             return false
         }
@@ -324,7 +327,7 @@ export default class Cryptols implements Cryptolsable {
 
     // @ts-ignore
     async saveAesKey(identifier: string, key: CryptoKey, encryptionKey: CryptoKey): Promise<boolean> {
-        try{
+        try {
             const exportedKey = await this.aes.exportKey('jwk', key)
             const byteKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
             const iv = this.aes.generateNewInitializeVector()
@@ -332,7 +335,7 @@ export default class Cryptols implements Cryptolsable {
             const base64Key = ByteConverter.ArrayBufferToBase64String(encryptedKey)
             await this.storage.saveAESKey(KeyTypes.AES_KEY, identifier, base64Key, iv)
             return true
-        }catch (e) {
+        } catch (e) {
             console.error(e)
             return false
         }
