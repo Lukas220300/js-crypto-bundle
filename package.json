@@ -4,7 +4,7 @@
   "description": "A bundle for crypto in js",
   "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -25,5 +25,12 @@
     "js-crypto-converter": "^1.0.0",
     "js-crypto-core": "^1.1.0",
     "js-crypto-local-storer": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.4.0",
+    "jest": "^27.5.0",
+    "ts-jest": "^27.1.3",
+    "ts-node": "^10.5.0",
+    "typescript": "^4.5.5"
   }
 }
