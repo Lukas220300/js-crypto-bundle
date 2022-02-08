@@ -1,4 +1,17 @@
+beforeAll(() => {
+    console.log('foo')
+
+})
+
 test('test test', () => {
-    expect(1+2).toBe(3)
+    console.log(window)
+    console.log(window.crypto)
+    console.log(window.crypto.subtle)
+    expect(window.crypto).toBeDefined()
+})
+
+test('test test', () => {
+    console.log('true2')
+    expect(window.crypto.subtle).toBeDefined()
 })
 
