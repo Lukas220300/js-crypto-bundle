@@ -9,6 +9,7 @@ import {KeyWithMaterial} from 'js-crypto-local-storer/src/interfaces/KeyWithMate
 import {Cryptolsable} from "./Cryptolsable";
 import {ByteConverter} from 'js-crypto-converter/src/ByteConverter'
 import {KeyConverter} from 'js-crypto-converter/src/KeyConverter'
+import {AesEncryption} from "./AesEncryption";
 
 export default class Cryptols implements Cryptolsable {
 
@@ -49,6 +50,10 @@ export default class Cryptols implements Cryptolsable {
         return this.pbkdf2.getNewSalt()
     }
 
+    /*
+        PBKDF2
+     */
+
     generateKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey> {
         const encodedPassword = ByteConverter.encodeString(password)
         return this.pbkdf2.getKeyFromPassword(encodedPassword, salt)
@@ -83,6 +88,10 @@ export default class Cryptols implements Cryptolsable {
         }
         return this.pbkdf2.importKey((dbEntry as KeyWithMaterial).key as JsonWebKey)
     }
+
+    /*
+        ECDH
+     */
 
     generateECDHKeyPair(): Promise<CryptoKeyPair> {
         return this.ecdh.generateNewKePair()
@@ -211,6 +220,10 @@ export default class Cryptols implements Cryptolsable {
         }
     }
 
+    /*
+        RSA
+     */
+
     generateNewRsaKeyPair(): Promise<CryptoKeyPair> {
         return this.rsa.generateNewKePair()
     }
@@ -298,6 +311,73 @@ export default class Cryptols implements Cryptolsable {
         }
     }
 
+    encryptDataWithRsa(publicKey: CryptoKey, data: Uint8Array): Promise<ArrayBuffer> {
+        return this.rsa.encrypt(publicKey, data);
+    }
+
+    // @ts-ignore
+    async encryptStringWithRsa(publicKey: CryptoKey, data: string, convertToBase64String: boolean = true): Promise<ArrayBuffer | string> {
+        const encodedData = ByteConverter.encodeString(data)
+        let encryptedData:ArrayBuffer|string = await this.encryptDataWithRsa(publicKey, encodedData)
+        if (convertToBase64String) {
+            encryptedData = ByteConverter.ArrayBufferToBase64String(encryptedData)
+        }
+        return encryptedData
+    }
+
+    // @ts-ignore
+    async encryptKeyWithRsa(publicKey: CryptoKey, keyToEncrypt: CryptoKey, convertToBase64String: boolean = true): Promise<ArrayBuffer | string> {
+        const exportedKey = await this.rsa.exportKey('jwk', keyToEncrypt)
+        const encodedKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
+        let encryptedKey:ArrayBuffer|string = await this.encryptDataWithRsa(publicKey, encodedKey)
+        if (convertToBase64String) {
+            encryptedKey = ByteConverter.ArrayBufferToBase64String(encryptedKey)
+        }
+        return encryptedKey
+    }
+
+    decryptDataWithRsa(privateKey: CryptoKey, data: Uint8Array | ArrayBuffer): Promise<ArrayBuffer> {
+        return this.rsa.decrypt(privateKey, data)
+    }
+
+    // @ts-ignore
+    async decryptStringWithRsa(privateKey: CryptoKey, data: Uint8Array | ArrayBuffer | string, isBase64Encoded: boolean = true): Promise<string> {
+        let decodedData = data // extract to function
+        if(isBase64Encoded) {
+            decodedData = ByteConverter.base64StringToUint8Array(decodedData as string)
+        }
+        const decryptedData = await this.decryptDataWithRsa(privateKey, decodedData as Uint8Array|ArrayBuffer)
+        return ByteConverter.byteArrayToString(decryptedData)
+    }
+
+    // @ts-ignore
+    async decryptKeyWithRsa(privateKey: CryptoKey, data: Uint8Array | ArrayBuffer | string, keyType: KeyTypes.AES_KEY|KeyTypes.RSA_PRIVATE_KEY|KeyTypes.RSA_PUBLIC_KEY|KeyTypes.ECDH_PRIVATE_KEY|KeyTypes.ECDH_PUBLIC_KEY, isBase64Encoded: boolean = true): Promise<CryptoKey> {
+        let decodedData = data
+        if(isBase64Encoded) {
+            decodedData = ByteConverter.base64StringToUint8Array(decodedData as string)
+        }
+        const decryptedKey = await this.decryptDataWithRsa(privateKey, decodedData as Uint8Array | ArrayBuffer)
+        const parsedKey = KeyConverter.ByteToJWK(new Uint8Array(decryptedKey))
+        switch (keyType) {
+            case KeyTypes.AES_KEY:
+                return this.aes.importKey(parsedKey, 'jwk')
+            case KeyTypes.ECDH_PRIVATE_KEY:
+                return this.ecdh.importKeyFordDrive(parsedKey, true)
+            case KeyTypes.ECDH_PUBLIC_KEY:
+                return this.ecdh.importKeyFordDrive(parsedKey, false)
+            case KeyTypes.RSA_PRIVATE_KEY:
+                return this.rsa.importKey(parsedKey, true)
+            case KeyTypes.RSA_PUBLIC_KEY:
+                return this.rsa.importKey(parsedKey, false)
+            default:
+                throw new Error('KeyType not supported')
+        }
+    }
+
+    /*
+        AES
+     */
+
     generateNewAesKey(): Promise<CryptoKey> {
         return this.aes.generateNewKey()
     }
@@ -340,4 +420,81 @@ export default class Cryptols implements Cryptolsable {
             return false
         }
     }
+
+    // @ts-ignore
+    async encryptDataWithAes(key: CryptoKey, data: Uint8Array,base64Encoded: boolean = false, iv?:Uint8Array): Promise<AesEncryption> {
+        if(iv === undefined) {
+            iv = this.aes.generateNewInitializeVector()
+        }
+        let encryption:ArrayBuffer|string = await this.aes.encrypt(iv, key, data)
+        if(base64Encoded) {
+            encryption = ByteConverter.ArrayBufferToBase64String(encryption)
+        }
+        return {
+            iv,
+            data: encryption
+        } as AesEncryption
+    }
+
+    // @ts-ignore
+    async encryptStringWithAes(key: CryptoKey, data: string, base64Encoded: boolean = true, iv?:Uint8Array): Promise<AesEncryption> {
+        const encodedString = ByteConverter.encodeString(data)
+        return await this.encryptDataWithAes(key, encodedString, base64Encoded, iv)
+    }
+
+    // @ts-ignore
+    async encryptKeyWithAes(key: CryptoKey, keyToEncrypt: CryptoKey, base64Encoded: boolean = true, iv?:Uint8Array): Promise<AesEncryption> {
+        const exportedKey = await this.aes.exportKey('jwk', keyToEncrypt)
+        const encodedKey = KeyConverter.JWKToByte(exportedKey as JsonWebKey)
+        return await this.encryptDataWithAes(key, encodedKey,base64Encoded,iv)
+    }
+
+    // @ts-ignore
+    async encryptObjectWithAes<T>(key:CryptoKey, data:T, base64Encoded: boolean = true, iv?:Uint8Array): Promise<AesEncryption> {
+        const serializedObject = JSON.stringify(data)
+        const encodedObject = ByteConverter.encodeString(serializedObject)
+        return await this.encryptDataWithAes(key, encodedObject, base64Encoded, iv)
+    }
+
+    // @ts-ignore
+    async decryptDataWithAes(key: CryptoKey, data: Uint8Array|ArrayBuffer|string, iv:Uint8Array, base64Encoded: boolean = false): Promise<ArrayBuffer> {
+        let decodedData = data
+        if(base64Encoded) {
+            decodedData = ByteConverter.base64StringToUint8Array(data as string)
+        }
+        return await this.aes.decrypt(iv, key, decodedData as Uint8Array|ArrayBuffer)
+    }
+
+    // @ts-ignore
+    async decryptStringWithAes(key: CryptoKey, data:string|ArrayBuffer|Uint8Array, iv:Uint8Array, base64Encoded: boolean = true): Promise<string> {
+        const decryptedData = await this.decryptDataWithAes(key, data, iv, base64Encoded)
+        return ByteConverter.byteArrayToString(decryptedData)
+    }
+
+    // @ts-ignore
+    async decryptKeyWithAes(key: CryptoKey, data: string|ArrayBuffer|Uint8Array, keyType: KeyTypes.AES_KEY|KeyTypes.RSA_PRIVATE_KEY|KeyTypes.RSA_PUBLIC_KEY|KeyTypes.ECDH_PRIVATE_KEY|KeyTypes.ECDH_PUBLIC_KEY, iv:Uint8Array, base64Encoded:boolean = true): Promise<CryptoKey> {
+        const decryptedKey = await this.decryptDataWithAes(key, data, iv, base64Encoded)
+        const decodedKey = KeyConverter.ByteToJWK(new Uint8Array(decryptedKey))
+        switch (keyType) {
+            case KeyTypes.AES_KEY:
+                return this.aes.importKey(decodedKey)
+            case KeyTypes.RSA_PUBLIC_KEY:
+                return this.rsa.importKey(decodedKey, false)
+            case KeyTypes.RSA_PRIVATE_KEY:
+                return this.rsa.importKey(decodedKey, true)
+            case KeyTypes.ECDH_PUBLIC_KEY:
+                return this.ecdh.importKeyFordDrive(decodedKey, false)
+            case KeyTypes.ECDH_PRIVATE_KEY:
+                return this.ecdh.importKeyFordDrive(decodedKey, true)
+            default:
+                throw new Error('KeyType not supported')
+        }
+    }
+    // @ts-ignore
+    async decryptObjectWithAes<T>(key:CryptoKey, data:string|ArrayBuffer|Uint8Array, iv:Uint8Array, base64Encoded: boolean = true): Promise<T> {
+        const decryptedObject = await this.decryptDataWithAes(key, data, iv, base64Encoded)
+        const decodedObject = ByteConverter.byteArrayToString(decryptedObject)
+        return JSON.parse(decodedObject) as T
+    }
+
 }
