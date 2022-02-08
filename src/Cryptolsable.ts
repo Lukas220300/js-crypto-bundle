@@ -3,7 +3,7 @@ import {AesEncryption} from "./AesEncryption";
 
 export interface Cryptolsable {
     // init and general functions
-    init(storageTerminatedCallBack: Function):Promise<void>
+    init(storageTerminatedCallBack: Function, storageName:string):Promise<void>
     newSalt():Uint8Array
     // PBKDF2
     generateKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey>

@@ -22,28 +22,18 @@ export default class Cryptols implements Cryptolsable {
     static IDENTIFIER_SPLITTER = '{(##)}'
     static SHARED_SECRET_IDENTIFIER_PREFIX = '8c13c5a9-1b80-4449-9383-22fddce8b7c3'
 
-    constructor(storageTerminatedCallBack: Function) {
+    constructor() {
         this.aes = new AES()
         this.ecdh = new ECDH()
         this.pbkdf2 = new PBKDF2()
         this.rsa = new RSA()
         this.storage = undefined
 
-        /*
-        todo: talk about init function
-        todo: change name to cryptols
-         */
-
-        /*
-        new IndexedDBBuilder().buildStorage('js-crypto-key-storage', 1, storageTerminatedCallBack).then((keyStorage: KeyStorage) => {
-            this.storage = keyStorage
-        })
-         */
     }
 
     // @ts-ignore
-    async init(storageTerminatedCallBack: Function): Promise<void> {
-        this.storage = await new IndexedDBBuilder().buildStorage('js-crypto-key-storage', 1, storageTerminatedCallBack)
+    async init(storageTerminatedCallBack: Function, storageName:string = 'cryptols'): Promise<void> {
+        this.storage = await new IndexedDBBuilder().buildStorage(storageName, 1, storageTerminatedCallBack)
     }
 
     newSalt(): Uint8Array {
