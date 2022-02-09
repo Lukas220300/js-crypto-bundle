@@ -11,6 +11,7 @@
     "url": "git+https://github.com/Lukas220300/js-crypto-bundle.git"
   },
   "keywords": [
+    "cryptols",
     "crypto",
     "bundle",
     "typescript"
