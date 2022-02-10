@@ -47,6 +47,33 @@ export default class Cryptols implements Cryptolsable {
         return this.storage
     }
 
+    // @ts-ignore
+    async exportKeyToJWKString(key:CryptoKey): Promise<string> {
+        const exportedKey = await this.aes.exportKey('jwk', key)
+        return KeyConverter.JWKToString(exportedKey as JsonWebKey)
+    }
+
+    // @ts-ignore
+    async importKeyFromJWKString(key:string, keyType: KeyTypes.PBKDF2_KEY | KeyTypes.ECDH_PRIVATE_KEY | KeyTypes.ECDH_PUBLIC_KEY | KeyTypes.RSA_PRIVATE_KEY | KeyTypes.RSA_PUBLIC_KEY | KeyTypes.AES_KEY): Promise<CryptoKey> {
+        const decodedKey = KeyConverter.stringToJWK(key)
+        switch (keyType) {
+            case KeyTypes.PBKDF2_KEY:
+                return this.pbkdf2.importKey(decodedKey)
+            case KeyTypes.ECDH_PRIVATE_KEY:
+                return this.ecdh.importKeyFordDrive(decodedKey, true)
+            case KeyTypes.ECDH_PUBLIC_KEY:
+                return this.ecdh.importKeyFordDrive(decodedKey, false)
+            case KeyTypes.RSA_PRIVATE_KEY:
+                return this.rsa.importKey(decodedKey, true)
+            case KeyTypes.RSA_PUBLIC_KEY:
+                return this.rsa.importKey(decodedKey, false)
+            case KeyTypes.AES_KEY:
+                return this.aes.importKey(decodedKey)
+            default:
+                throw new Error('Type is not supported')
+        }
+    }
+
     /*
         PBKDF2
      */

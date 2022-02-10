@@ -5,6 +5,8 @@ export interface Cryptolsable {
     // init and general functions
     init(storageTerminatedCallBack: Function, storageName:string):Promise<void>
     newSalt():Uint8Array
+    exportKeyToJWKString(key:CryptoKey): Promise<string>
+    importKeyFromJWKString(key:string, keyType: KeyTypes.PBKDF2_KEY | KeyTypes.ECDH_PRIVATE_KEY | KeyTypes.ECDH_PUBLIC_KEY | KeyTypes.RSA_PRIVATE_KEY | KeyTypes.RSA_PUBLIC_KEY | KeyTypes.AES_KEY): Promise<CryptoKey>
     // PBKDF2
     generateKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey>
     generateAndSaveKeyFromPassword(password: string, salt: Uint8Array, userIdentifier: string): Promise<CryptoKey>
