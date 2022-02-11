@@ -79,7 +79,7 @@ export default class Cryptols implements Cryptolsable {
      */
 
     generateKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey> {
-        const encodedPassword = ByteConverter.encodeString(password)
+        const encodedPassword = ByteConverter.encodeString(password, false)
         return this.pbkdf2.getKeyFromPassword(encodedPassword, salt)
     }
 
@@ -341,7 +341,7 @@ export default class Cryptols implements Cryptolsable {
 
     // @ts-ignore
     async encryptStringWithRsa(publicKey: CryptoKey, data: string, convertToBase64String: boolean = true): Promise<ArrayBuffer | string> {
-        const encodedData = ByteConverter.encodeString(data)
+        const encodedData = ByteConverter.encodeString(data, false)
         let encryptedData:ArrayBuffer|string = await this.encryptDataWithRsa(publicKey, encodedData)
         if (convertToBase64String) {
             encryptedData = ByteConverter.ArrayBufferToBase64String(encryptedData)
@@ -371,7 +371,7 @@ export default class Cryptols implements Cryptolsable {
             decodedData = ByteConverter.base64StringToUint8Array(decodedData as string)
         }
         const decryptedData = await this.decryptDataWithRsa(privateKey, decodedData as Uint8Array|ArrayBuffer)
-        return ByteConverter.byteArrayToString(decryptedData)
+        return ByteConverter.byteArrayToString(decryptedData, false)
     }
 
     // @ts-ignore
@@ -462,7 +462,7 @@ export default class Cryptols implements Cryptolsable {
 
     // @ts-ignore
     async encryptStringWithAes(key: CryptoKey, data: string, base64Encoded: boolean = true, iv?:Uint8Array): Promise<AesEncryption> {
-        const encodedString = ByteConverter.encodeString(data)
+        const encodedString = ByteConverter.encodeString(data, false)
         return await this.encryptDataWithAes(key, encodedString, base64Encoded, iv)
     }
 
@@ -476,7 +476,7 @@ export default class Cryptols implements Cryptolsable {
     // @ts-ignore
     async encryptObjectWithAes<T>(key:CryptoKey, data:T, base64Encoded: boolean = true, iv?:Uint8Array): Promise<AesEncryption> {
         const serializedObject = JSON.stringify(data)
-        const encodedObject = ByteConverter.encodeString(serializedObject)
+        const encodedObject = ByteConverter.encodeString(serializedObject, false)
         return await this.encryptDataWithAes(key, encodedObject, base64Encoded, iv)
     }
 
@@ -492,7 +492,7 @@ export default class Cryptols implements Cryptolsable {
     // @ts-ignore
     async decryptStringWithAes(key: CryptoKey, data:string|ArrayBuffer|Uint8Array, iv:Uint8Array, base64Encoded: boolean = true): Promise<string> {
         const decryptedData = await this.decryptDataWithAes(key, data, iv, base64Encoded)
-        return ByteConverter.byteArrayToString(decryptedData)
+        return ByteConverter.byteArrayToString(decryptedData, false)
     }
 
     // @ts-ignore
@@ -517,7 +517,7 @@ export default class Cryptols implements Cryptolsable {
     // @ts-ignore
     async decryptObjectWithAes<T>(key:CryptoKey, data:string|ArrayBuffer|Uint8Array, iv:Uint8Array, base64Encoded: boolean = true): Promise<T> {
         const decryptedObject = await this.decryptDataWithAes(key, data, iv, base64Encoded)
-        const decodedObject = ByteConverter.byteArrayToString(decryptedObject)
+        const decodedObject = ByteConverter.byteArrayToString(decryptedObject, false)
         return JSON.parse(decodedObject) as T
     }
 

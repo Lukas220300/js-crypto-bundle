@@ -23,10 +23,8 @@
   },
   "homepage": "https://github.com/Lukas220300/js-crypto-bundle#readme",
   "dependencies": {
-    "js-crypto-converter": "^1.0.0",
+    "js-crypto-converter": "^1.1.1",
     "js-crypto-core": "^1.1.0",
     "js-crypto-local-storer": "^1.0.0"
-  },
-  "devDependencies": {
   }
 }
